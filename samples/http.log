@@ -1,0 +1,20 @@
+#separator \x09
+#set_separator	,
+#empty_field	(empty)
+#unset_field	-
+#path	http
+#open	2026-01-15-09-00-00
+#fields	ts	uid	id.orig_h	id.orig_p	id.resp_h	id.resp_p	trans_depth	method	host	uri	referrer	version	user_agent	origin	request_body_len	response_body_len	status_code	status_msg	info_code	info_msg	tags	username	password	proxied	orig_fuids	orig_filenames	orig_mime_types	resp_fuids	resp_filenames	resp_mime_types
+#types	time	string	addr	port	addr	port	count	string	string	string	string	string	string	string	count	count	count	string	count	string	set[enum]	string	string	set[string]	vector[string]	vector[string]	vector[string]	vector[string]	vector[string]	vector[string]
+1736931600.000000	HxSample01	10.0.0.5	49200	198.51.100.10	80	1	GET	example.com	/index.html	-	1.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36	-	0	2048	200	OK	-	-	(empty)	-	-	-	-	-	-	FxFile01	-	text/html
+1736931601.000000	HxSample02	10.0.0.5	49201	198.51.100.10	80	1	GET	example.com	/about.html	-	1.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36	-	0	1024	200	OK	-	-	(empty)	-	-	-	-	-	-	FxFile02	-	text/html
+1736931610.000000	HxSample03	10.0.0.15	49210	198.51.100.20	80	1	GET	target-site.com	/../../../etc/passwd	-	1.1	python-requests/2.28.0	-	0	0	404	Not Found	-	-	(empty)	-	-	-	-	-	-	-	-	-
+1736931611.000000	HxSample04	10.0.0.15	49211	198.51.100.20	80	1	GET	target-site.com	/wp-admin/admin-ajax.php	-	1.1	python-requests/2.28.0	-	0	512	200	OK	-	-	(empty)	-	-	-	-	-	-	FxFile03	-	text/html
+1736931612.000000	HxSample05	10.0.0.15	49212	198.51.100.20	80	1	GET	target-site.com	/phpmyadmin/index.php	-	1.1	python-requests/2.28.0	-	0	0	404	Not Found	-	-	(empty)	-	-	-	-	-	-	-	-	-
+1736931620.000000	HxSample06	10.0.0.16	49220	198.51.100.30	80	1	GET	scan-target.net	/login	-	1.1	masscan/1.0	-	0	0	200	OK	-	-	(empty)	-	-	-	-	-	-	-	-	-
+1736931621.000000	HxSample07	10.0.0.16	49221	198.51.100.30	80	1	GET	scan-target.net	/admin	-	1.1	masscan/1.0	-	0	0	404	Not Found	-	-	(empty)	-	-	-	-	-	-	-	-	-
+1736931630.000000	HxSample08	10.0.0.5	49230	198.51.100.10	80	1	POST	example.com	/api/data	-	1.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36	-	512	256	200	OK	-	-	(empty)	-	-	-	-	-	-	FxFile04	-	application/json
+1736931631.000000	HxSample09	10.0.0.5	49231	198.51.100.10	80	1	GET	example.com	/search?q=union+select+1,2,3--	-	1.1	sqlmap/1.6	-	0	0	200	OK	-	-	(empty)	-	-	-	-	-	-	-	-	-
+1736931640.000000	HxSample0A	10.0.0.40	49240	198.51.100.40	8080	1	GET	internal-app.local	/health	-	1.1	Go-http-client/1.1	-	0	128	200	OK	-	-	(empty)	-	-	-	-	-	-	FxFile05	-	application/json
+1736931650.000000	HxSample0B	10.0.0.50	49250	198.51.100.50	80	1	GET	cdn.example.com	/static/app.js	-	1.1	Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36	-	0	51200	200	OK	-	-	(empty)	-	-	-	-	-	-	FxFile06	-	application/javascript
+#close	2026-01-15-10-00-00
