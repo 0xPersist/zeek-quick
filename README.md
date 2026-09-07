@@ -13,7 +13,7 @@ Supports `conn.log`, `dns.log`, `http.log`, and `ssl.log` in both TSV and JSON f
 - **dns.log**: high-frequency queries, suspicious TLDs, rare domains
 - **http.log**: suspicious user agents, suspicious URIs, top destinations
 - **ssl.log**: self-signed certs, expired certs, rare JA3 hashes
-- Dual beacon detection: frequency threshold + interval variance (coefficient of variation)
+- Dual beacon detection: frequency threshold **or** interval variance (coefficient of variation) — see caveats below
 - Color-coded terminal output
 - JSON export for pipeline integration
 - Sample logs included for testing
@@ -98,11 +98,13 @@ zeek-quick samples/ssl.log
 
 Two methods run simultaneously. A connection pair is flagged if either condition is met.
 
-**Frequency threshold**: flags src/dst pairs that connect more than `--beacon-min` times. Default is 20 connections. Lower this value to catch slow beacons.
+**Frequency threshold**: flags src/dst pairs that connect more than `--beacon-min` times. Default is 20 connections. This condition uses **no timing evidence at all** — any high-volume pair matches, including port scanners and ordinary chatty services.
 
 **Interval variance**: calculates the coefficient of variation (CV) of connection intervals. Low CV means highly regular timing, which is a strong beacon indicator. Default threshold is 0.3 (30% variance). This catches beacons that add slight jitter to evade simple frequency checks.
 
-Both methods report independently so you can see which condition triggered.
+Both methods report independently, so check the `reasons` field before treating a hit as a beacon. A result citing only `frequency=` has not been shown to be regular in time; one citing `interval_cv=` has.
+
+**Tuning.** On a noisy or internet-facing capture the frequency condition dominates. Measured on a 105,918-record capture whose sensor sat on the destination: 920 pairs were flagged, **754 of them (82%) on frequency alone**, and 908 were inbound scanners. The real beacon in that capture was found and correctly measured (`interval_cv=0.163`, `mean_interval_s=272.48`) but ranked 7th. **Raise `--beacon-min` to cut scanner noise** — at 2000 the same capture yields 3 results. Note that raising it also hides genuinely slow beacons, which the frequency condition cannot see in any case; those are what `--beacon-jitter` is for.
 
 ---
 
@@ -110,8 +112,13 @@ Both methods report independently so you can see which condition triggered.
 
 Handles both Zeek TSV (default) and JSON log formats. TSV format requires a `#fields` header line. JSON format expects one JSON object per line (NDJSON).
 
-Rotated or compressed logs should be decompressed before use:
+Rotated or compressed logs must be decompressed to a file first. Piped input is **not** supported — the parser rewinds the input handle to read the `#fields` header, which fails on any non-seekable stream:
+
 ```bash
+# works
+gunzip -c conn.log.gz > /tmp/conn.log && zeek-quick /tmp/conn.log --type conn
+
+# does NOT work — io.UnsupportedOperation: underlying stream is not seekable
 zcat conn.log.gz | zeek-quick /dev/stdin --type conn
 ```
 
@@ -119,7 +126,7 @@ zcat conn.log.gz | zeek-quick /dev/stdin --type conn
 
 ## Sample Logs
 
-The `samples/` directory contains sanitized example logs for each supported type. All IPs use RFC 5737 documentation ranges (`192.0.2.x`, `198.51.100.x`, `203.0.113.x`) and contain no real infrastructure data.
+The `samples/` directory contains sanitized example logs for each supported type. External IPs use RFC 5737 documentation ranges (`192.0.2.x`, `198.51.100.x`, `203.0.113.x`) and internal hosts use RFC 1918 private space (`10.0.0.x`). No real infrastructure data is included.
 
 ---
 
