@@ -6,6 +6,7 @@ License: MIT
 """
 
 import argparse
+import itertools
 import json
 import sys
 import os
@@ -67,24 +68,47 @@ def section(title):
 
 # ── Zeek log parser ────────────────────────────────────────────────────────────
 
+def _open_log(path: str):
+    """
+    Open a log for reading. "-" and /dev/stdin read the process stdin so that
+    piped input works. Returns (stream, should_close).
+    """
+    if path in ("-", "/dev/stdin"):
+        try:
+            sys.stdin.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
+        return sys.stdin, False
+    return open(path, "r", encoding="utf-8", errors="replace"), True
+
+
 def parse_zeek_log(path: str) -> tuple:
     """
-    Parse a Zeek TSV log file.
+    Parse a Zeek log.
     Returns (fields, rows) where rows is a list of dicts.
     Handles both TSV (#fields) and JSON log formats.
+
+    Single pass: the first line decides the format and is then pushed back
+    onto the iterator rather than rewinding the handle. Seeking works on a
+    regular file but raises io.UnsupportedOperation on a pipe, which is
+    exactly how compressed logs are meant to be fed in:
+        zcat conn.log.gz | zeek-quick - --type conn
+    itertools.chain stays lazy, so a 500 MB conn.log is never held in memory.
     """
     fields = []
     rows   = []
 
     try:
-        with open(path, "r", encoding="utf-8", errors="replace") as f:
-            # Peek at first line to determine format
-            first = f.readline().strip()
-            f.seek(0)
+        f, should_close = _open_log(path)
+        try:
+            first = f.readline()
+            if not first:
+                return fields, rows
+            lines = itertools.chain((first,), f)
 
             # JSON format
-            if first.startswith("{"):
-                for line in f:
+            if first.lstrip().startswith("{"):
+                for line in lines:
                     line = line.strip()
                     if not line:
                         continue
@@ -97,7 +121,7 @@ def parse_zeek_log(path: str) -> tuple:
                 return fields, rows
 
             # TSV format
-            for line in f:
+            for line in lines:
                 line = line.rstrip("\n")
                 if line.startswith("#fields"):
                     fields = line.split("\t")[1:]
@@ -107,6 +131,9 @@ def parse_zeek_log(path: str) -> tuple:
                     values = line.split("\t")
                     if len(values) == len(fields):
                         rows.append(dict(zip(fields, values)))
+        finally:
+            if should_close:
+                f.close()
 
     except FileNotFoundError:
         print(c(f"[!] File not found: {path}", "red"))
