@@ -102,7 +102,46 @@ def main() -> int:
     r = run(["-", "--type", "conn", "--json", "--no-banner"], stdin_bytes=b"not a zeek log\n")
     check("garbage stdin exits cleanly", b"Traceback" not in r.stderr)
 
-    print("T6: missing file still reports cleanly")
+    print("T6: trailing-tab records parse (ZQ-005)")
+    # Shape taken from the RITA dnscat2 conn.log: every record ends with a tab,
+    # so it splits into one extra empty value. Previously every row was dropped.
+    tt = os.path.join(tmp, "trailing_tab.log")
+    hdr = "#fields\tts\tuid\tid.orig_h\tid.orig_p\tid.resp_h\tid.resp_p\tproto"
+    with open(tt, "w") as fh:
+        fh.write(hdr + "\n")
+        for i in range(25):
+            fh.write(f"{1700000000 + i*60}.0\tC{i}\t192.0.2.10\t{40000+i}\t"
+                     f"198.51.100.20\t443\ttcp\t\n")          # note trailing tab
+    r = run([tt, "--type", "conn", "--json", "--no-banner"])
+    check("trailing-tab log parses", b'"total_connections": 25' in r.stdout)
+    check("trailing-tab log emits no diagnostic", b"skipped" not in r.stderr)
+
+    print("T7: genuinely ragged rows are still rejected, and reported (ZQ-005)")
+    rg = os.path.join(tmp, "ragged.log")
+    with open(rg, "w") as fh:
+        fh.write("#fields\ta\tb\tc\n")
+        fh.write("1\t2\t3\n")        # good
+        fh.write("1\t2\t3\t\n")      # trailing tab, tolerated
+        fh.write("1\t2\n")            # too few  -> reject
+        fh.write("1\t2\t3\t4\t5\n")  # too many -> reject
+    sys.path.insert(0, os.path.dirname(_TOOL))
+    import importlib
+    zq = importlib.import_module("zeek_quick")
+    importlib.reload(zq)
+    fields, parsed = zq.parse_zeek_log(rg)
+    check("ragged: only well-formed rows kept", len(parsed) == 2)
+    check("ragged: field list intact", fields == ["a", "b", "c"])
+    r = run([rg, "--type", "conn", "--json", "--no-banner"])
+    check("ragged: drop count reported on stderr", b"2 row(s) skipped" in r.stderr)
+    check("ragged: diagnostic names both counts", b"declares 3" in r.stderr and b"row has 2" in r.stderr)
+    check("ragged: stdout stays valid JSON", r.stdout.lstrip().startswith(b"{"))
+
+    print("T8: clean log is unchanged by the tolerance (no regression)")
+    r2 = run([tsv, "--type", "conn", "--json", "--no-banner"])
+    check("clean log output byte-identical to baseline", r2.stdout == base.stdout)
+    check("clean log emits no diagnostic", r2.stderr == b"")
+
+    print("T9: missing file still reports cleanly")
     r = run([os.path.join(tmp, "nope.log"), "--type", "conn"])
     check("missing file, no traceback", b"Traceback" not in r.stderr)
 

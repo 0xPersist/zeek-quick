@@ -121,6 +121,8 @@ def parse_zeek_log(path: str) -> tuple:
                 return fields, rows
 
             # TSV format
+            dropped = 0
+            mismatch = None          # (declared, found) of the first bad row
             for line in lines:
                 line = line.rstrip("\n")
                 if line.startswith("#fields"):
@@ -129,8 +131,25 @@ def parse_zeek_log(path: str) -> tuple:
                     continue
                 elif fields:
                     values = line.split("\t")
+                    # Some Zeek writers terminate each record with a tab, which
+                    # splits into one extra empty value. Tolerate exactly that
+                    # and nothing looser: a genuinely ragged row is still bad.
+                    if len(values) == len(fields) + 1 and values[-1] == "":
+                        values = values[:-1]
                     if len(values) == len(fields):
                         rows.append(dict(zip(fields, values)))
+                    else:
+                        dropped += 1
+                        if mismatch is None:
+                            mismatch = (len(fields), len(values))
+            if dropped:
+                declared, found = mismatch
+                # stderr, so --json stdout stays machine-readable. Silence here
+                # was the real defect: "No records parsed" is indistinguishable
+                # from a broken input file.
+                print(c(f"[!] {dropped} row(s) skipped: field count mismatch "
+                        f"(#fields declares {declared}, row has {found})",
+                        "yellow"), file=sys.stderr)
         finally:
             if should_close:
                 f.close()
