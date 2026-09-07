@@ -112,21 +112,32 @@ Both methods report independently, so check the `reasons` field before treating 
 
 Handles both Zeek TSV (default) and JSON log formats. TSV format requires a `#fields` header line. JSON format expects one JSON object per line (NDJSON).
 
-Rotated or compressed logs must be decompressed to a file first. Piped input is **not** supported — the parser rewinds the input handle to read the `#fields` header, which fails on any non-seekable stream:
+Compressed logs can be streamed straight in. Pass `-` (or `/dev/stdin`) to read the pipe:
 
 ```bash
-# works
-gunzip -c conn.log.gz > /tmp/conn.log && zeek-quick /tmp/conn.log --type conn
-
-# does NOT work — io.UnsupportedOperation: underlying stream is not seekable
-zcat conn.log.gz | zeek-quick /dev/stdin --type conn
+zcat conn.log.gz | zeek-quick - --type conn
+gunzip -c conn.log.gz | zeek-quick /dev/stdin --type conn
 ```
+
+Piped input is parsed in a single pass and produces byte-identical output to running against the same data as a file. Give `--type` when reading a pipe, since there is no filename to detect the log type from.
+
+Note that a gzipped file **path** is not read directly — decompress it or stream it as above.
 
 ---
 
 ## Sample Logs
 
 The `samples/` directory contains sanitized example logs for each supported type. External IPs use RFC 5737 documentation ranges (`192.0.2.x`, `198.51.100.x`, `203.0.113.x`) and internal hosts use RFC 1918 private space (`10.0.0.x`). No real infrastructure data is included.
+
+---
+
+## Tests
+
+```bash
+python3 run_tests.py
+```
+
+Covers input handling: file path, piped stdin via both `-` and `/dev/stdin`, byte-identical output between the two, the compressed-log idiom end to end, NDJSON over a pipe, and clean handling of empty, malformed and missing input.
 
 ---
 
