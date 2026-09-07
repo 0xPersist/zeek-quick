@@ -137,7 +137,7 @@ The `samples/` directory contains sanitized example logs for each supported type
 python3 run_tests.py
 ```
 
-Covers input handling: file path, piped stdin via both `-` and `/dev/stdin`, byte-identical output between the two, the compressed-log idiom end to end, NDJSON over a pipe, and clean handling of empty, malformed and missing input.
+49 checks. Input handling: file path, piped stdin via both `-` and `/dev/stdin`, byte-identical output between the two, the compressed-log idiom end to end, NDJSON over a pipe, trailing-tab records, ragged rows with their drop diagnostic, and clean handling of empty, malformed and missing input. Analysis: each of the four log types over `samples/`, asserting type auto-detection, that every documented section is present, that findings are actually produced rather than parsing to zero, and that piped and file-path output stay identical.
 
 ---
 

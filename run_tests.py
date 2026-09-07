@@ -141,7 +141,48 @@ def main() -> int:
     check("clean log output byte-identical to baseline", r2.stdout == base.stdout)
     check("clean log emits no diagnostic", r2.stderr == b"")
 
-    print("T9: missing file still reports cleanly")
+    print("T9: per-log-type analyses over the shipped samples (ZQ-004)")
+    # The suite previously covered input handling only. These exercise each of
+    # the four documented log types end to end against samples/, which is what
+    # the README tells users to run.
+    _samples = os.path.join(os.path.dirname(_TOOL), "samples")
+    _expected = {
+        "conn.log": ["top_talkers", "long_connections", "beacons"],
+        "dns.log":  ["rare_domains", "high_freq_queries", "suspicious_tlds"],
+        "http.log": ["rare_user_agents", "suspicious_agents", "top_destinations",
+                     "suspicious_uris"],
+        "ssl.log":  ["self_signed", "expired_certs", "rare_ja3"],
+    }
+    for _name, _sections in _expected.items():
+        _path = os.path.join(_samples, _name)
+        _r = run([_path, "--json", "--no-banner"])
+        check(f"{_name}: exits 0", _r.returncode == 0)
+        try:
+            _d = json.loads(_r.stdout)
+        except json.JSONDecodeError:
+            _d = None
+        check(f"{_name}: emits valid JSON", _d is not None)
+        if _d is None:
+            continue
+        check(f"{_name}: type auto-detected, all documented sections present",
+              all(k in _d for k in _sections))
+        check(f"{_name}: summary reports parsed records",
+              isinstance(_d.get("summary"), dict) and bool(_d["summary"]))
+        # every sample must actually yield analysable records, not parse to zero
+        _nonempty = any(isinstance(_d.get(k), list) and _d[k] for k in _sections)
+        check(f"{_name}: at least one section has findings", _nonempty)
+
+    print("T10: sample analyses are stable through a pipe")
+    for _name in _expected:
+        _path = os.path.join(_samples, _name)
+        with open(_path, "rb") as _fh:
+            _raw = _fh.read()
+        _a = run([_path, "--json", "--no-banner"]).stdout
+        _t = _name.split(".")[0]
+        _b = run(["-", "--type", _t, "--json", "--no-banner"], stdin_bytes=_raw).stdout
+        check(f"{_name}: piped output identical to file path", _a == _b)
+
+    print("T11: missing file still reports cleanly")
     r = run([os.path.join(tmp, "nope.log"), "--type", "conn"])
     check("missing file, no traceback", b"Traceback" not in r.stderr)
 
