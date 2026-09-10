@@ -198,7 +198,7 @@ def main() -> int:
         )
         check(f"{_name}: --json alone pipes into json.tool", _parse.returncode == 0)
         check(f"{_name}: --json alone emits no banner",
-              b"\u2588" not in _r.stdout and b"by 0xPersist" not in _r.stdout)
+              "\u2588".encode() not in _r.stdout and b"by 0xPersist" not in _r.stdout)
         # The flag must stay idempotent for anyone already passing both.
         check(f"{_name}: --json matches --json --no-banner",
               _r.stdout == run([_path, "--json", "--no-banner"]).stdout)
