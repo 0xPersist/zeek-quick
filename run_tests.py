@@ -186,6 +186,23 @@ def main() -> int:
     r = run([os.path.join(tmp, "nope.log"), "--type", "conn"])
     check("missing file, no traceback", b"Traceback" not in r.stderr)
 
+    print("T12: --json is pipe-safe without --no-banner")
+    _samples_dir = os.path.join(os.path.dirname(_TOOL), "samples")
+    for _name in sorted(os.listdir(_samples_dir)):
+        _path = os.path.join(_samples_dir, _name)
+        _r = run([_path, "--json"])
+        # Parse the way a shell pipeline would: hand stdout straight to a parser.
+        _parse = subprocess.run(
+            [sys.executable, "-m", "json.tool"],
+            input=_r.stdout, capture_output=True,
+        )
+        check(f"{_name}: --json alone pipes into json.tool", _parse.returncode == 0)
+        check(f"{_name}: --json alone emits no banner",
+              b"\u2588" not in _r.stdout and b"by 0xPersist" not in _r.stdout)
+        # The flag must stay idempotent for anyone already passing both.
+        check(f"{_name}: --json matches --json --no-banner",
+              _r.stdout == run([_path, "--json", "--no-banner"]).stdout)
+
     print(f"\nRESULTS: {_passed} passed, {_failed} failed")
     return 1 if _failed else 0
 

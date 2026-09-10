@@ -50,7 +50,7 @@ options:
   --beacon-jitter FLOAT Max interval CV for beacon detection (default: 0.3)
   --high-freq COUNT     DNS query count threshold for high-frequency (default: 100)
   --rare-threshold COUNT Query/UA count considered rare (default: 2)
-  --json                Output results as JSON
+  --json                Output results as JSON (implies --no-banner)
   --out FILE            Write JSON output to file
   --no-banner           Suppress banner
 ```
@@ -81,8 +81,10 @@ zeek-quick http.log --json --out http_results.json
 
 **SSL log, pipe-friendly:**
 ```bash
-zeek-quick ssl.log --no-banner --json | jq '.self_signed'
+zeek-quick ssl.log --json | jq '.self_signed'
 ```
+
+`--json` suppresses the banner on its own, so JSON output is always safe to pipe.
 
 **Test with included sample logs:**
 ```bash

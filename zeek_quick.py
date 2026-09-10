@@ -751,12 +751,18 @@ log types supported:
                         help="DNS queries above this count flagged as high-frequency (default: 100)")
     parser.add_argument("--rare-threshold", type=int,   default=2,    dest="rare_threshold",
                         help="Query/UA count at or below this is considered rare (default: 2)")
-    parser.add_argument("--json",           action="store_true", help="Output results as JSON")
+    parser.add_argument("--json",           action="store_true",
+                        help="Output results as JSON (implies --no-banner)")
     parser.add_argument("--out",            help="Write JSON output to file")
     parser.add_argument("--no-banner",      action="store_true", help="Suppress banner")
     parser.add_argument("--version",        action="version", version=f"zeek-quick {VERSION}")
 
     args = parser.parse_args()
+
+    # --json is for machines: anything but the JSON document on stdout makes the
+    # output unparseable, so the banner is suppressed without asking.
+    if args.json:
+        args.no_banner = True
 
     if not args.no_banner:
         print(c(BANNER, "cyan"))
